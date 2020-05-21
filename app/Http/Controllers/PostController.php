@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Validator;
 
 use App\Post;
 
@@ -52,6 +53,18 @@ class PostController extends Controller
     {
         $data = $request->all();
         $data['slug'] = Str::slug($data['title'], '-');
+
+        $validator = Validator::make($data,[
+          'title'=> 'required|string|max:150',
+          'body'=> 'required',
+          'author'=> 'required',
+          'img'=> 'required',
+          'published'=> 'required'
+        ]);
+
+        if ($validator->fails()) {
+          return redirect('posts/create')->withErrors($validator)->withInput();
+        }
         $post = new Post;
         $post->fill($data);
         $saved = $post->save();
@@ -59,7 +72,7 @@ class PostController extends Controller
           echo "Error";
         }
 
-        return redirect()->route('posts.show', $post->id);
+        return redirect()->route('posts.show', $post->slug);
     }
 
     /**
@@ -68,9 +81,9 @@ class PostController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show($slug)
     {
-        $post = Post::find($id);
+        $post = Post::where('slug', $slug)->first();
         if(empty($post)){
           abort('404');
         }
@@ -81,12 +94,16 @@ class PostController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  int  $id
+     * @param  Post $post
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit(Post $post)
     {
+        if (empty($post)) {
+          abort('404');
+        }
 
+        return view('posts.edit', compact('post'));
     }
 
     /**
@@ -98,7 +115,34 @@ class PostController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+
+      $post = Post::find($id);
+      if (empty($post)) {
+        abort('404');
+      }
+
+      $data = $request->all();
+      $data['slug'] = Str::slug($data['title'], '-');
+
+      $validator = Validator::make($data,[
+        'title'=> 'required|string|max:150',
+        'body'=> 'required',
+        'author'=> 'required',
+        'img'=> 'required',
+        'published'=> 'required'
+      ]);
+
+      if ($validator->fails()) {
+        return redirect('posts.edit')->withErrors($validator)->withInput();
+      }
+
+      $post->fill($data);
+      $updated = $post->update();
+      if (!$updated) {
+        echo "Error";
+      }
+
+      return redirect()->route('posts.show', $post->slug);
     }
 
     /**
